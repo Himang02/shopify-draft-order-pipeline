@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Secrets / environment
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local project instructions (not part of the published course)
+CLAUDE.md
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
