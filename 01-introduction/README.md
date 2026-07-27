@@ -10,7 +10,7 @@ This section builds the mental foundation everything else in the course rests on
 |---|---------|--------|
 | 01 | [What is Shopify?](01-what-is-shopify.md) | ✅ Written |
 | 02 | [Shopify vs Amazon (marketplace vs platform)](02-shopify-vs-amazon.md) | ✅ Written |
-| 03 | Merchants, stores, and the admin | 🚧 Planned |
+| 03 | [Merchants, stores, and the admin](03-merchants-stores-and-the-admin.md) | ✅ Written |
 
 ## What you'll be able to do after this section
 
