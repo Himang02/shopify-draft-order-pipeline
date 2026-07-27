@@ -10,7 +10,7 @@ So this section starts with a **map of the whole data model**, then zooms into e
 |---|---------|--------|
 | 01 | [The Shopify Data Model (overview of all objects)](01-the-shopify-data-model.md) | ✅ Written |
 | 02 | [Products vs Variants](02-products-vs-variants.md) | ✅ Written |
-| 03 | Customers | 🚧 Planned |
+| 03 | [Customers](03-customers.md) | ✅ Written |
 | 04 | Draft Orders (the quotation) | 🚧 Planned |
 | 05 | Orders and the order lifecycle | 🚧 Planned |
 | 06 | Checkout, Invoice, Payment vs Fulfillment | 🚧 Planned |
