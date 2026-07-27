@@ -112,8 +112,6 @@ Every capability you'll learn is downstream of *the merchant owns the store*.
 
 ## REST & GraphQL
 
-There's no API call for "Shopify vs. Amazon" — it's a positioning concept, not an object. But it's worth noting *what* the APIs in this course are, precisely because of the ownership model:
-
 - Shopify's **Admin API** (REST in [Section 03](../03-rest-api/), GraphQL in [Section 05](../05-graphql/)) exists because the merchant owns the store's data and is entitled to full programmatic access to it.
 - Amazon's seller APIs exist too, but they're scoped to a *supplier's* view inside Amazon's store — you operate within Amazon's walls, not over your own.
 
