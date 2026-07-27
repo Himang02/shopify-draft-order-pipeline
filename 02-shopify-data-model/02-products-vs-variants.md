@@ -36,7 +36,6 @@ An analogy backend engineers find natural:
 
 > **Product is the class. Variant is the instance you can actually use.**
 
-Or, from a shop floor: the product is the *sign on the shelf* ("Classic Tiramisu"); the variants are the *individual boxes* under it, each with its own barcode and price sticker. The customer walks out with a box, not a sign.
 
 The relationship is strictly one-to-many:
 

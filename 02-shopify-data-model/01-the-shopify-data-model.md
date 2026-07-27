@@ -14,10 +14,8 @@ Imagine you've just been handed access to Himang's store and told: "Write a serv
 - Where does *Alice* live as a record?
 - What object represents "an order that isn't paid yet"?
 - What turns into a real, paid **order**, and what happens to it after?
-- Which of these do I create, and which does Shopify create for me?
 
-You can't design anything until you know the pieces and their relationships. Jumping straight into `Product vs Variant` (the next chapter) without this map is how people end up confused about where a concept fits. So this chapter gives you the pieces and the wiring; the rest of the section fills in detail.
-
+You can't design anything until you know the pieces and their relationships. 
 ---
 
 ## Mental Model
@@ -29,19 +27,7 @@ There are two natural halves:
 - **The catalog half** — what's *for sale*: **Products** and their **Variants**. Static-ish; it's Himang's menu.
 - **The commerce half** — what *happens when someone buys*: **Customers**, **Draft Orders**, **Orders**, **Line Items**, **Transactions**, and **Fulfillments**. Dynamic; it's the flow of a sale.
 
-A **Customer** meets the **catalog** at the moment of a sale, and that sale flows through the commerce half:
-
-```
-   CATALOG (what's for sale)          COMMERCE (what happens on a sale)
-
-   Product ──has many──► Variant  ◄────referenced by──── Line Item
-                                                             │
-                                                        belongs to
-                                                             ▼
-      Customer ───────────────────────────────►  Draft Order / Order
-```
-
-Don't memorize this yet — just register the shape: **a catalog of variants, a customer, and an order that ties a customer to the variants they bought.** Everything else hangs off that spine.
+A **Customer** meets the **catalog** at the moment of a sale, and that sale flows through the commerce half.
 
 ---
 
@@ -141,7 +127,7 @@ Every object above is exposed by both APIs; the mapping is direct, and mostly yo
 - **REST** gives each object its own endpoint family: `/products`, `/customers`, `/draft_orders`, `/orders`, and so on. A relationship like "a product's variants" appears as a nested array in the JSON (you saw this in the product example — variants live inside the product). Some relationships are separate endpoints (e.g. an order's transactions at `/orders/{id}/transactions.json`).
 - **GraphQL** exposes the same objects as *types* (`Product`, `ProductVariant`, `Customer`, `DraftOrder`, `Order`) and lets you traverse the relationships in a single query — fetch an order *and* its line items *and* each line item's variant at once. This "follow the graph in one request" ability is the reason it's called GraphQL, and it maps naturally onto the diagram above.
 
-We're not calling anything yet — authentication is [Section 03](../03-rest-api/). The takeaway here is just: **the map you drew is the map both APIs expose.** Learn the objects and their relationships once, and both API styles become "how do I say this in REST vs. GraphQL," not "what even is this."
+We're not calling anything yet — authentication is [Section 03](../03-rest-api/). The takeaway here is just: **the map you drew is the map both APIs expose.**
 
 ---
 
