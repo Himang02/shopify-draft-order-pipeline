@@ -1,6 +1,6 @@
 # Products vs. Variants
 
-This is the most important chapter in the early course, and the one beginners get wrong most often. If you internalize the difference between a **Product** and a **Variant** now, half of Shopify's data model — and the entire draft-order pipeline this repository is built around — stops being confusing. Get it wrong, and your very first attempt to create an order will fail with a baffling error.
+The [previous chapter](01-the-shopify-data-model.md) mapped all of Shopify's core objects. Now we zoom into the first pair — and it's the pair beginners get wrong most often. If you internalize the difference between a **Product** and a **Variant**, the catalog half of the data model, and the entire draft-order pipeline this repository is built around, stops being confusing. Get it wrong, and your very first attempt to create an order will fail with a baffling error.
 
 So we'll go slow.
 

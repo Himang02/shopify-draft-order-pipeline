@@ -2,17 +2,18 @@
 
 Shopify is, at its heart, a set of objects that relate to each other: products have variants, customers place orders, orders get fulfilled. If you understand these objects and how they connect, most of the API stops being surprising.
 
-This is the most important section in the early course. The concepts here — especially **Product vs Variant** and **Draft Order vs Order** — are the ones beginners misunderstand most often.
+So this section starts with a **map of the whole data model**, then zooms into each object. The concepts here — especially **Product vs Variant** and **Draft Order vs Order** — are the ones beginners misunderstand most often.
 
 ## Chapters
 
 | # | Chapter | Status |
 |---|---------|--------|
-| 01 | [Products vs Variants](01-products-vs-variants.md) | ✅ Written |
-| 02 | Customers | 🚧 Planned |
-| 03 | Draft Orders (the quotation) | 🚧 Planned |
-| 04 | Orders and the order lifecycle | 🚧 Planned |
-| 05 | Checkout, Invoice, Payment vs Fulfillment | 🚧 Planned |
+| 01 | [The Shopify Data Model (overview of all objects)](01-the-shopify-data-model.md) | ✅ Written |
+| 02 | [Products vs Variants](02-products-vs-variants.md) | ✅ Written |
+| 03 | Customers | 🚧 Planned |
+| 04 | Draft Orders (the quotation) | 🚧 Planned |
+| 05 | Orders and the order lifecycle | 🚧 Planned |
+| 06 | Checkout, Invoice, Payment vs Fulfillment | 🚧 Planned |
 
 ## The one diagram to remember
 
