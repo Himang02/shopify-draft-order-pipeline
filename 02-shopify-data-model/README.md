@@ -8,7 +8,7 @@ This is the most important section in the early course. The concepts here — es
 
 | # | Chapter | Status |
 |---|---------|--------|
-| 01 | Products vs Variants | 🚧 Planned |
+| 01 | [Products vs Variants](01-products-vs-variants.md) | ✅ Written |
 | 02 | Customers | 🚧 Planned |
 | 03 | Draft Orders (the quotation) | 🚧 Planned |
 | 04 | Orders and the order lifecycle | 🚧 Planned |
