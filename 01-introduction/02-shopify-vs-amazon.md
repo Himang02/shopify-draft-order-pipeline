@@ -80,6 +80,16 @@ Line them up on the things that matter to a business.
 | **Fees** | Referral % per sale + often FBA fees. | Subscription + payment processing %. |
 | **Effort to start** | Low — plug into an existing crowd. | Higher — you build the storefront and the audience. |
 
+A few terms in that table deserve a definition, since we'll use them again:
+
+- **Fulfillment** — everything that happens *after* payment to get the product to the buyer: storing inventory, picking, packing, shipping, and returns. It is deliberately separate from *payment* (taking the money) — a core Shopify idea we cover in [Section 02](../02-shopify-data-model/) and [Section 07](../07-payments/).
+- **FBA ("Fulfillment by Amazon")** — the seller ships stock to Amazon's warehouses, and Amazon stores, packs, ships, and handles returns. Convenient, but Amazon stays between you and the buyer.
+- **Self-ship** — the merchant stores and ships orders themselves (Himang boxing tiramisu at home).
+- **3PL ("Third-Party Logistics")** — an outside company you hire to warehouse and ship for you (e.g. ShipBob). Like FBA in mechanics, but a vendor *you* choose and control.
+- **Apps** — Shopify add-ons that wire fulfillment into the store (print labels, connect a 3PL, sync tracking). Covered in [Section 06](../06-app-architecture/).
+
+So the fulfillment row says: on Amazon, logistics is usually bundled into the platform via FBA; on Shopify, Shopify warehouses nothing — it *tracks* fulfillment status but leaves *how* you fulfill entirely to you.
+
 Read the table as a single trade-off:
 
 > **Amazon trades ownership for reach. Shopify trades reach for ownership.**
