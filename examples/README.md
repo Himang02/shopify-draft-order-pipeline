@@ -22,7 +22,7 @@ Examples are added alongside the chapters that introduce them.
 | [`send-invoice.js`](send-invoice.js) | [03.05 Invoice URLs](../03-rest-api/05-invoice-urls.md) | ✅ |
 | [`complete-draft-order.js`](complete-draft-order.js) | [03.06 Completing a Draft Order](../03-rest-api/06-completing-a-draft-order.md) | ✅ |
 | [`webhook-server.js`](webhook-server.js) | [04 — Webhooks](../04-webhooks/) | ✅ |
-| `graphql-draft-order.js` | [05 — GraphQL](../05-graphql/) | 🚧 Planned |
+| [`graphql-draft-order.js`](graphql-draft-order.js) | [05 — GraphQL](../05-graphql/) | ✅ |
 
 ## Running an example
 
