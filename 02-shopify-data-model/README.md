@@ -12,7 +12,7 @@ So this section starts with a **map of the whole data model**, then zooms into e
 | 02 | [Products vs Variants](02-products-vs-variants.md) | ✅ Written |
 | 03 | [Customers](03-customers.md) | ✅ Written |
 | 04 | [Draft Orders (the quotation)](04-draft-orders.md) | ✅ Written |
-| 05 | Orders and the order lifecycle | 🚧 Planned |
+| 05 | [Orders and the order lifecycle](05-orders-and-the-order-lifecycle.md) | ✅ Written |
 | 06 | Checkout, Invoice, Payment vs Fulfillment | 🚧 Planned |
 
 ## The one diagram to remember
