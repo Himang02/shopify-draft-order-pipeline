@@ -8,11 +8,13 @@ This section covers the full webhook pipeline, including the security details th
 
 | # | Chapter | Status |
 |---|---------|--------|
-| 01 | What are webhooks, and why? | 🚧 Planned |
-| 02 | Local development with ngrok | 🚧 Planned |
-| 03 | `express.raw()` vs `express.json()` | 🚧 Planned |
-| 04 | HMAC, SHA-256, and `timingSafeEqual` | 🚧 Planned |
-| 05 | Replay attacks and webhook security | 🚧 Planned |
+| 01 | [What are webhooks, and why?](01-what-are-webhooks.md) | ✅ Written |
+| 02 | [Local development with ngrok](02-local-development-with-ngrok.md) | ✅ Written |
+| 03 | [`express.raw()` vs `express.json()`](03-express-raw-vs-json.md) | ✅ Written |
+| 04 | [HMAC, SHA-256, and `timingSafeEqual`](04-hmac-sha256-timingsafeequal.md) | ✅ Written |
+| 05 | [Replay attacks and webhook security](05-replay-attacks-and-security.md) | ✅ Written |
+
+A complete, correct receiver is in [`../examples/webhook-server.js`](../examples/webhook-server.js): raw body → verify HMAC → freshness → parse → dedupe → ack.
 
 ## Architecture
 

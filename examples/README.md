@@ -21,7 +21,7 @@ Examples are added alongside the chapters that introduce them.
 | [`create-draft-order.js`](create-draft-order.js) | [03.04 Creating a Draft Order](../03-rest-api/04-creating-a-draft-order.md) | ✅ |
 | [`send-invoice.js`](send-invoice.js) | [03.05 Invoice URLs](../03-rest-api/05-invoice-urls.md) | ✅ |
 | [`complete-draft-order.js`](complete-draft-order.js) | [03.06 Completing a Draft Order](../03-rest-api/06-completing-a-draft-order.md) | ✅ |
-| `webhook-server.js` | [04 — Webhooks](../04-webhooks/) | 🚧 Planned |
+| [`webhook-server.js`](webhook-server.js) | [04 — Webhooks](../04-webhooks/) | ✅ |
 | `graphql-draft-order.js` | [05 — GraphQL](../05-graphql/) | 🚧 Planned |
 
 ## Running an example
@@ -35,6 +35,8 @@ node verify-auth.js
 ```
 
 See [`.env.example`](.env.example) for the full list. The natural order mirrors the pipeline: `verify-auth` → `products` → `customers` → `create-draft-order` → `send-invoice` → `complete-draft-order`.
+
+The REST examples use only Node's built-in `fetch` — no install needed. The webhook receiver ([`webhook-server.js`](webhook-server.js)) uses Express, so run `npm install` first, then `node webhook-server.js` (and expose it with `ngrok http 3000`). A [`package.json`](package.json) with npm-script shortcuts is included.
 
 ## What's next
 

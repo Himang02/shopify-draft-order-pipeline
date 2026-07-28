@@ -1,0 +1,22 @@
+{
+  "name": "shopify-draft-order-pipeline-examples",
+  "version": "1.0.0",
+  "description": "Runnable examples for the Shopify from First Principles course.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "verify-auth": "node verify-auth.js",
+    "products": "node products.js",
+    "customers": "node customers.js",
+    "create-draft-order": "node create-draft-order.js",
+    "send-invoice": "node send-invoice.js",
+    "complete-draft-order": "node complete-draft-order.js",
+    "webhook-server": "node webhook-server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
