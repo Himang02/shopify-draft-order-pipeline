@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Himang's Tiramisu — Mini Admin</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo">🍰</span>
+        <div>
+          <h1>Himang's Tiramisu</h1>
+          <p class="subtitle">Mini Admin — draft-order pipeline</p>
+        </div>
+      </div>
+      <div id="shop-info" class="shop-info">connecting…</div>
+    </header>
+
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="products">Products</button>
+      <button class="tab" data-tab="customers">Customers</button>
+      <button class="tab" data-tab="create">Create Draft Order</button>
+      <button class="tab" data-tab="drafts">Draft Orders</button>
+      <button class="tab" data-tab="orders">Orders</button>
+      <button class="tab" data-tab="webhooks">Webhooks</button>
+    </nav>
+
+    <main>
+      <!-- Products -->
+      <section id="tab-products" class="panel active">
+        <div class="panel-head">
+          <h2>Products &amp; Variants</h2>
+          <button class="btn" onclick="loadProducts()">Refresh</button>
+        </div>
+        <p class="hint">
+          Customers buy <strong>variants</strong>, not products. Note the
+          <code>variant id</code> — you'll use it when creating a draft order.
+        </p>
+        <div id="products-list"></div>
+      </section>
+
+      <!-- Customers -->
+      <section id="tab-customers" class="panel">
+        <div class="panel-head">
+          <h2>Customers</h2>
+          <button class="btn" onclick="loadCustomers()">Refresh</button>
+        </div>
+
+        <form id="customer-form" class="card form">
+          <h3>Find or create a customer</h3>
+          <div class="row">
+            <label>Email* <input name="email" type="email" placeholder="alice@example.com" required /></label>
+            <label>First name <input name="firstName" placeholder="Alice" /></label>
+            <label>Last name <input name="lastName" placeholder="Sharma" /></label>
+          </div>
+          <div class="row">
+            <label>Address <input name="address1" placeholder="12 Bakers Lane" /></label>
+            <label>City <input name="city" placeholder="Pune" /></label>
+            <label>Country <input name="country" placeholder="India" /></label>
+          </div>
+          <button class="btn primary" type="submit">Find or create</button>
+          <span class="form-msg" id="customer-msg"></span>
+        </form>
+
+        <div class="search-row">
+          <input id="customer-search" placeholder="Search email:alice@example.com" />
+          <button class="btn" onclick="loadCustomers()">Search</button>
+        </div>
+        <div id="customers-list"></div>
+      </section>
+
+      <!-- Create Draft Order -->
+      <section id="tab-create" class="panel">
+        <div class="panel-head"><h2>Create Draft Order</h2></div>
+        <p class="hint">
+          Pick variants and quantities, attach a customer, and Shopify computes
+          the totals. No order exists until it's completed.
+        </p>
+        <form id="draft-form" class="card form">
+          <h3>Line items</h3>
+          <div id="line-items"></div>
+          <button class="btn" type="button" onclick="addLineItemRow()">+ Add line item</button>
+
+          <h3>Customer (optional)</h3>
+          <label class="block">
+            Customer
+            <select name="customerId" id="draft-customer">
+              <option value="">— none —</option>
+            </select>
+          </label>
+
+          <button class="btn primary" type="submit">Create draft order</button>
+          <span class="form-msg" id="draft-msg"></span>
+        </form>
+      </section>
+
+      <!-- Draft Orders -->
+      <section id="tab-drafts" class="panel">
+        <div class="panel-head">
+          <h2>Draft Orders</h2>
+          <button class="btn" onclick="loadDrafts()">Refresh</button>
+        </div>
+        <p class="hint">
+          <span class="pill open">open</span> editable ·
+          <span class="pill sent">invoice_sent</span> awaiting payment ·
+          <span class="pill done">completed</span> became an order
+        </p>
+        <div id="drafts-list"></div>
+      </section>
+
+      <!-- Orders -->
+      <section id="tab-orders" class="panel">
+        <div class="panel-head">
+          <h2>Orders</h2>
+          <button class="btn" onclick="loadOrders()">Refresh</button>
+        </div>
+        <p class="hint">
+          Two independent axes: <strong>financial</strong> (money) and
+          <strong>fulfillment</strong> (goods). <code>null</code> fulfillment =
+          unfulfilled, which is normal.
+        </p>
+        <div id="orders-list"></div>
+      </section>
+
+      <!-- Webhooks -->
+      <section id="tab-webhooks" class="panel">
+        <div class="panel-head">
+          <h2>Recent Webhooks</h2>
+          <button class="btn" onclick="loadWebhooks()">Refresh</button>
+        </div>
+        <p class="hint">
+          Verified <code>orders/*</code> webhooks received by this server (HMAC
+          checked, deduped). Point Shopify at
+          <code>&lt;public-url&gt;/webhooks/orders</code> via ngrok.
+        </p>
+        <div id="webhooks-list"></div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

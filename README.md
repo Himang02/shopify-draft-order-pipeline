@@ -82,6 +82,7 @@ Whenever you see a product or a customer in an example, it will be one of these.
 
 Supporting folders:
 
+- [`app/`](app/) — a small, runnable **mini admin UI** (HTML/CSS + Express) that ties the pipeline together: view products & variants, find-or-create customers, create draft orders, mark them paid, view orders, and receive verified webhooks.
 - [`examples/`](examples/) — runnable Node.js / Express code referenced by the chapters.
 - [`assets/`](assets/) — diagrams and images.
 
