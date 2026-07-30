@@ -1,15 +1,15 @@
 # Products & Variants over REST
 
-The [previous chapter](01-authentication-and-access-tokens.md) got you authenticated. Now we use that to work with the catalog. The concept is already yours from [Section 02, Ch. 02](../02-shopify-data-model/02-products-vs-variants.md) — product as catalog entry, variant as sellable unit. This chapter turns that into real REST calls, ending with the thing the pipeline actually needs: **variant IDs**.
+Now we use the auth from [Chapter 01](01-authentication-and-access-tokens.md) on the catalog. The concept is from [Section 02, Ch. 02](../02-shopify-data-model/02-products-vs-variants.md) — product as catalog entry, variant as sellable unit. This turns it into real calls, ending with what the pipeline needs: **variant IDs**.
 
 ---
 
 ## Business Problem
 
-Before Himang can take Alice's order, the store needs the tiramisus *in it*. And before your draft-order code can add "2 × Large Classic Tiramisu" to an order, it needs to know that variant's **ID** (`9002`, in our running example). So two practical tasks:
+Before Himang can take Alice's order, the tiramisus must be *in* the store, and your draft-order code needs the variant's **ID** (`9002`). Two tasks:
 
-1. **Create** products (with their variants) in the store.
-2. **List / fetch** products to discover variant IDs to use later.
+1. **Create** products (with variants).
+2. **List / fetch** products to discover variant IDs.
 
 Both are plain REST over the auth pattern you just learned.
 
@@ -17,13 +17,11 @@ Both are plain REST over the auth pattern you just learned.
 
 ## Mental Model
 
-Nothing new conceptually — just recall the shape and remember one rule:
+> A product **contains** its variants — you create a product *with* its variants in one call, and reading a product returns its variants nested inside.
 
-> A product **contains** its variants. In REST, you create a product *with* its variants in one call, and when you read a product, its variants come nested inside it.
+And the load-bearing rule:
 
-And the load-bearing rule from Section 02, restated because the whole pipeline hinges on it:
-
-> **Everything transactional uses the *variant* ID, never the product ID.** This chapter's real goal is to get those variant IDs.
+> **Everything transactional uses the *variant* ID, never the product ID.** Getting those IDs is this chapter's real goal.
 
 ---
 
@@ -43,11 +41,9 @@ And the load-bearing rule from Section 02, restated because the whole pipeline h
 
 ## REST Implementation
 
-All calls reuse the authenticated request pattern: the `myshopify.com` URL, the pinned version, and the `X-Shopify-Access-Token` header. We'll show the HTTP first, then runnable Node.
+All calls reuse the auth pattern: the `myshopify.com` URL, pinned version, and token header.
 
 ### Create a product with variants
-
-Himang's Classic Tiramisu in two sizes:
 
 ```
 POST /admin/api/2024-10/products.json
@@ -68,13 +64,11 @@ POST /admin/api/2024-10/products.json
 }
 ```
 
-Field by field:
+- **`title`, `body_html`, `vendor`** — catalog facts, on the product.
+- **`options`** — the "Size" dimension defining what variants vary by.
+- **`variants[]`** — each with its own `price`, `sku`, `inventory_quantity`, and an `option1`. **No price on the product** — it lives here.
 
-- **`title`, `body_html`, `vendor`** — catalog-level facts, on the *product* (per Section 02).
-- **`options`** — the "Size" dimension with its values. This defines what the variants vary by.
-- **`variants[]`** — the sellable units. Each carries its own **`price`, `sku`, `inventory_quantity`**, and an `option1` matching a Size value. Notice: **no price on the product** — it lives here.
-
-Shopify responds with the created product, now with **server-assigned IDs**:
+Shopify responds with server-assigned IDs:
 
 ```json
 {
@@ -89,23 +83,16 @@ Shopify responds with the created product, now with **server-assigned IDs**:
 }
 ```
 
-Those `variants[].id` values (`9001`, `9002`) are what the draft-order chapter will consume. **Capture them.**
+Those `variants[].id` values (`9001`, `9002`) are what the draft-order chapter consumes. **Capture them.**
 
-### List products and extract variant IDs
-
-```
-GET /admin/api/2024-10/products.json?limit=50
-```
-
-Returns `{ "products": [ … ] }`, each product with its nested `variants`. To find "Large Classic Tiramisu," you locate the product by title, then the variant by its option — reading `variant.id` out.
-
-### Fetch one product
+### List products / fetch one
 
 ```
-GET /admin/api/2024-10/products/8001.json
+GET /admin/api/2024-10/products.json?limit=50   → { "products": [ … ] }, each with nested variants
+GET /admin/api/2024-10/products/8001.json        → a single product
 ```
 
-Returns a single product (with variants) when you already know its ID.
+To find a variant, locate the product, then the variant by its option, and read `variant.id`.
 
 ### Runnable Node example
 
@@ -179,86 +166,86 @@ main().catch((e) => {
 });
 ```
 
-The `shopify()` helper — read env, build URL, send token header, check `res.ok`, return JSON — is the same pattern from Chapter 01, factored out so it's written once and reused. Every later chapter builds on this helper. A copy lives in [`examples/products.js`](../examples/products.js).
+The `shopify()` helper — read env, build URL, send token, check `res.ok`, return JSON — is Chapter 01's pattern factored out, reused everywhere after. Copy in [`examples/products.js`](../examples/products.js).
 
 ---
 
 ## GraphQL Implementation
 
-The same two operations in GraphQL (full treatment in [Section 05](../05-graphql/)):
+The same two operations in GraphQL ([Section 05](../05-graphql/)):
 
-- **Read:** the `products` query with a `variants` connection — you saw this shape in Section 02, with `edges`/`node` and global IDs (`gid://shopify/ProductVariant/9002`).
-- **Create:** the `productCreate` mutation (with `productVariantsBulkCreate` for variants in current API versions), returning the product and a `userErrors` array to check.
+- **Read:** the `products` query with a `variants` connection (`edges`/`node`, global IDs).
+- **Create:** `productCreate` (plus `productVariantsBulkCreate` for variants in current versions), returning the product and a `userErrors` array.
 
-The difference worth flagging now: in GraphQL you **ask for exactly the fields you want** — e.g. just each variant's `id` — instead of getting the whole product object and digging out one field. When "I only need variant IDs" meets "don't over-fetch," GraphQL is often the cleaner tool. That trade-off is Section 05's story.
+The difference: GraphQL fetches **exactly the fields you want** — just each variant's `id` — instead of the whole product. When "I only need IDs" meets "don't over-fetch," GraphQL wins (Section 05).
 
 ---
 
 ## Production Considerations
 
-- **Capture variant IDs at creation time.** The `POST` response already contains them — store them then, rather than re-listing later.
-- **Paginate when listing.** `GET /products.json` returns a page (default/max sizes apply). Real catalogs need pagination via the `Link` header (cursor-based). Don't assume one call returns everything.
-- **Inventory is more than a number.** Setting `inventory_quantity` at creation is fine for a demo, but real inventory is tracked per *location* and adjusted through inventory endpoints. Treat the creation-time quantity as a starting convenience, not the full system.
-- **Creating is not idempotent.** `POST /products.json` twice makes two products. If you sync catalogs, look up by a stable key (like SKU or your own reference) before creating, or you'll get duplicates.
-- **Respect rate limits.** Bulk-creating many products can hit the leaky-bucket limit; handle `429` by backing off ([Section 10](../10-production/)).
+- **Capture variant IDs at creation** — the `POST` response has them; don't re-list later.
+- **Paginate when listing** — `GET /products.json` returns one page; use cursor pagination (`Link` header) for the rest.
+- **Inventory is per-location.** The creation-time `inventory_quantity` is a convenience; real inventory is adjusted through inventory endpoints.
+- **Creation isn't idempotent** — two `POST`s make two products. When syncing, look up by a stable key first.
+- **Respect rate limits** — handle `429` by backing off ([Section 10](../10-production/)).
 
 ---
 
 ## Common Misconceptions
 
-**❌ "I create the product first, then create its variants in a second call."**
-Reality: You can create a product *with* its variants in one `POST`. (You *can* add variants later too, but the single-call form is normal.)
+**❌ "I create the product, then its variants separately."**
+You can create a product *with* its variants in one `POST`.
 
 **❌ "The product has the price."**
-Reality: Price is on each **variant** in the `variants[]` array. The product JSON has no price field. (Section 02, again.)
+Price is on each **variant**. The product JSON has no price field.
 
 **❌ "One `GET /products.json` returns my whole catalog."**
-Reality: It returns one page. Use cursor pagination (the `Link` header) for the rest.
+One page. Use cursor pagination for the rest.
 
-**❌ "I'll use the product ID for the order later."**
-Reality: You'll use the **variant** ID. Getting those IDs is the reason this chapter exists.
+**❌ "I'll use the product ID for the order."**
+The **variant** ID. Getting those is why this chapter exists.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: I created a product with no `options`/`variants` block. Does it have a variant?**
-Yes — Shopify creates a **default variant** (Section 02). Read it back and you'll find one variant holding the price/stock. Use *its* ID for transactions.
+**Q: I created a product with no options/variants — does it have a variant?**
+Yes — Shopify creates a **default variant** holding the price/stock. Use *its* ID.
 
 **Q: How do I set different prices per size?**
-Put the price on each variant. Small at `300.00`, Large at `550.00`, as in the example. That's exactly why variants exist.
+Put the price on each variant (Small `300.00`, Large `550.00`). That's why variants exist.
 
-**Q: How do I find the variant ID for an existing product I didn't just create?**
-`GET` the product (or list products) and read `variants[].id` from the nested array. The example's `listVariantIds()` does this.
+**Q: How do I find the variant ID of an existing product?**
+`GET` the product (or list products) and read `variants[].id`.
 
 **Q: Can I update a variant's price later?**
-Yes, via the variant update endpoint (`PUT /variants/{id}.json`). Note that past *orders* keep their snapshotted price (Section 02, Ch. 05) — updating the variant only affects future sales.
+Yes (`PUT /variants/{id}.json`). Past orders keep their snapshotted price; only future sales change.
 
 ---
 
 ## Interview Questions
 
-1. In one `POST`, what do you send to create a product with two sizes at different prices?
-2. Where does price live in the product-create payload, and where does it *not*?
-3. After creating a product, where do you find the variant IDs, and why do you want them?
-4. Why can't you rely on a single `GET /products.json` to return an entire catalog?
-5. Why is product creation not idempotent, and how do you avoid duplicates when syncing?
-6. In GraphQL, what's the advantage when all you need is variant IDs?
+1. In one `POST`, what creates a product with two sizes at different prices?
+2. Where does price live in the payload, and where doesn't it?
+3. After creating, where are the variant IDs, and why do you want them?
+4. Why can't one `GET /products.json` return the whole catalog?
+5. Why isn't product creation idempotent, and how do you avoid duplicates?
+6. In GraphQL, what's the advantage when you only need variant IDs?
 
 ---
 
 ## Summary
 
-- Reusing the Chapter 01 auth pattern, you **create products with nested variants** in one `POST /products.json`, and **list/fetch** them via `GET`.
-- **Price, SKU, and inventory go on each variant**, not the product — exactly as Section 02 said.
-- The real payoff is the **variant IDs** in the response (`9001`, `9002`); capture them, because the draft-order pipeline consumes them.
-- Listing is **paginated**, creation is **not idempotent**, and inventory is really per-location — plan for all three in production.
-- GraphQL does the same with a `variants` connection and `productCreate`, with the bonus of fetching *only* the fields you need (Section 05).
+- Reusing the auth pattern, **create products with nested variants** via `POST /products.json`, and **list/fetch** via `GET`.
+- **Price, SKU, inventory go on each variant**, not the product.
+- The payoff is the **variant IDs** in the response — capture them.
+- Listing is **paginated**, creation is **not idempotent**, inventory is **per-location**.
+- GraphQL does the same with a `variants` connection and `productCreate`, fetching only what you need.
 
 ---
 
 ## What's Next
 
-You have variants and their IDs — the "what" of a sale. Next, the "who."
+You have the "what" of a sale. Next, the "who."
 
-→ **Next chapter: [Customers over REST](03-customers-over-rest.md)** — create and look up customers (find-or-create by email), producing the customer ID the draft order will reference.
+→ **Next: [Customers over REST](03-customers-over-rest.md)** — find-or-create by email, producing the customer ID the draft order references.

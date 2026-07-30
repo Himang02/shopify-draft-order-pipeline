@@ -1,27 +1,27 @@
 # Invoice URLs
 
-You have an open, priced draft order for Alice. She still needs a way to pay. This chapter is about that bridge: the **invoice** — sending Alice a "please pay" message with a link to a hosted checkout. The concept is from [Section 02, Ch. 06](../02-shopify-data-model/06-checkout-invoice-payment-vs-fulfillment.md); here we do it over REST.
+You have an open, priced draft order. Alice needs a way to pay. This chapter is the bridge: the **invoice** — a "please pay" message with a link to a hosted checkout. Concept from [Section 02, Ch. 06](../02-shopify-data-model/06-checkout-invoice-payment-vs-fulfillment.md); here we do it over REST.
 
 ---
 
 ## Business Problem
 
-Alice is on the phone, not the website. Himang needs to send her something she can click to pay — pre-filled with her exact order and total. That's the draft order's **`invoice_url`**, delivered via Shopify's **send-invoice** action.
+Alice is on the phone, not the website. Himang needs to send her something to click to pay — pre-filled with her order and total. That's the draft's **`invoice_url`**, delivered via Shopify's **send-invoice** action.
 
 ---
 
 ## Mental Model
 
-Two things, easy to conflate, kept distinct (Section 02, Ch. 06):
+Two things, kept distinct:
 
-- **`invoice_url`** — a *link* to a Shopify-hosted checkout, pre-loaded with the draft's line items and totals. It already exists on the draft order the moment you create it.
-- **Sending the invoice** — the action of *delivering* that link to the customer (Shopify emails it), which also moves the draft's status to `invoice_sent`.
+- **`invoice_url`** — a *link* to a Shopify-hosted checkout, pre-loaded with the draft's items and totals. It exists on the draft from the moment you create it.
+- **Sending the invoice** — the action of *delivering* that link (Shopify emails it), which also moves the draft to `invoice_sent`.
 
-> The `invoice_url` is the pay page; "send invoice" is mailing Alice the link. Neither one charges her — she pays by opening the link and going through checkout.
+> The `invoice_url` is the pay page; "send invoice" mails Alice the link. Neither charges her — she pays by going through the checkout.
 
-And the two rules that keep beginners honest:
+And:
 
-> Sending an invoice **does not charge** Alice and **does not create an order**. Only her *completing the checkout* (paying) does — which produces the order in Chapter 06.
+> Sending an invoice **does not charge** Alice and **does not create an order**. Only her *completing the checkout* does (Chapter 06).
 
 ---
 
@@ -62,21 +62,21 @@ POST /admin/api/2024-10/draft_orders/5001/send_invoice.json
 }
 ```
 
-- **`to`** — recipient; defaults to the attached customer's email if omitted.
-- **`subject` / `custom_message`** — optional personalization on the email.
+- **`to`** — defaults to the attached customer's email if omitted.
+- **`subject` / `custom_message`** — optional personalization.
 
-An empty body (`{}`) works too — Shopify uses the customer's email and a default template. After this call, the draft's status is `invoice_sent`.
+An empty body (`{}`) works too. After this call the draft is `invoice_sent`.
 
 ### Just want the link (no email)?
 
-The `invoice_url` is already on the draft order from creation — you can `GET` the draft and read it, then deliver the link however you like (SMS, WhatsApp, your own email):
+The `invoice_url` is already on the draft — `GET` it and deliver the link however you like (SMS, WhatsApp, your own email):
 
 ```
 GET /admin/api/2024-10/draft_orders/5001.json
 → draft_order.invoice_url = "https://himangs-tiramisu.myshopify.com/.../invoices/abc123"
 ```
 
-So there are two delivery styles: let **Shopify email it** (`send_invoice`), or **grab the URL** and send it yourself. Sending via Shopify is what flips the status to `invoice_sent`.
+So two delivery styles: let **Shopify email it** (`send_invoice`), or **grab the URL** and send it yourself. Only `send_invoice` flips the status to `invoice_sent`.
 
 ### Runnable example
 
@@ -135,7 +135,7 @@ main().catch((e) => {
 });
 ```
 
-A copy lives in [`examples/send-invoice.js`](../examples/send-invoice.js).
+Copy in [`examples/send-invoice.js`](../examples/send-invoice.js).
 
 ---
 
@@ -152,77 +152,77 @@ mutation {
 }
 ```
 
-Same effect: email the invoice, status → `invoice_sent`, `invoiceUrl` available. Check `userErrors` as always.
+Same effect: email the invoice, status → `invoice_sent`, `invoiceUrl` available. Check `userErrors`.
 
 ---
 
 ## Production Considerations
 
-- **`invoice_sent` is not income.** The status only means "we asked." Don't record revenue until the order exists and is `paid` (Chapter 06).
-- **Learn of payment via webhooks, not polling.** When Alice pays, Shopify creates the order and fires `orders/create`/`orders/paid`. Subscribe to those ([Section 04](../04-webhooks/)) rather than repeatedly `GET`-ting the draft.
-- **Invoice links can be re-sent and can linger.** Alice may ignore the email. Decide on reminders and an expiry policy so stale `invoice_sent` drafts don't accumulate.
-- **Use the hosted checkout — don't rebuild it.** The `invoice_url` keeps card data off your systems (PCI, [Section 01](../01-introduction/01-what-is-shopify.md)). Delivering the link is enough; you never handle the payment form.
-- **Deliverability matters.** If you rely on Shopify's email, invoices can land in spam. For important B2B flows, some merchants share the `invoice_url` through their own trusted channel instead.
+- **`invoice_sent` is not income** — it means "we asked." Record revenue only when the order is `paid` (Chapter 06).
+- **Learn of payment via webhooks** (`orders/create`/`orders/paid`), not by polling the draft ([Section 04](../04-webhooks/)).
+- **Invoices can be re-sent and can linger** — have a reminder/expiry policy.
+- **Use the hosted checkout** — the `invoice_url` keeps card data off your systems (PCI). You never handle the payment form.
+- **Deliverability matters** — Shopify's email can hit spam; for important B2B, share the `invoice_url` through your own channel.
 
 ---
 
 ## Common Misconceptions
 
 **❌ "Sending the invoice charges Alice."**
-Reality: It only delivers a pay link. Money moves when she completes the checkout.
+It only delivers a pay link. Money moves when she completes checkout.
 
 **❌ "Sending the invoice creates the order."**
-Reality: No. The order is created when she pays (Chapter 06). Until then the draft is `invoice_sent`, `order_id` still `null`.
+No — the order is created when she pays (Chapter 06). Until then `order_id` is `null`.
 
-**❌ "The `invoice_url` only exists after I call send_invoice."**
-Reality: It's on the draft from creation. `send_invoice` *delivers* it (and sets the status); you can also just read the URL and share it yourself.
+**❌ "The `invoice_url` only exists after send_invoice."**
+It's on the draft from creation. `send_invoice` *delivers* it and sets the status.
 
-**❌ "I should build my own payment page for a nicer experience."**
-Reality: The hosted checkout handles PCI and payment methods for you. Rebuilding it forfeits that protection for little gain in this flow.
+**❌ "I should build my own payment page."**
+The hosted checkout handles PCI and payment methods. Rebuilding forfeits that.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: What's the difference between `invoice_url` and `send_invoice`?**
-`invoice_url` is the pay link (present from draft creation). `send_invoice` is the action that emails that link to the customer and sets the draft's status to `invoice_sent`.
+**Q: `invoice_url` vs `send_invoice`?**
+`invoice_url` is the pay link (present from creation). `send_invoice` emails it and sets `invoice_sent`.
 
-**Q: Can I send the link without using Shopify's email?**
-Yes — `GET` the draft, read `invoice_url`, and deliver it through any channel. Note that skipping `send_invoice` means the status won't automatically become `invoice_sent`.
+**Q: Send the link without Shopify's email?**
+Yes — read `invoice_url` and deliver it any way. Skipping `send_invoice` means the status won't become `invoice_sent`.
 
-**Q: How will I know when Alice pays?**
-Via webhooks (`orders/create` / `orders/paid`), covered in [Section 04](../04-webhooks/). Don't poll the draft in a loop.
+**Q: How do I know when Alice pays?**
+Webhooks (`orders/create`/`orders/paid`), not polling ([Section 04](../04-webhooks/)).
 
-**Q: Can I resend the invoice?**
-Yes — call `send_invoice` again. Useful for reminders.
+**Q: Can I resend?**
+Yes — call `send_invoice` again (good for reminders).
 
-**Q: Does the customer need a Shopify account to pay?**
-No. The hosted checkout supports guest payment; Alice just opens the link and pays.
+**Q: Does she need a Shopify account?**
+No — the hosted checkout supports guest payment.
 
 ---
 
 ## Interview Questions
 
-1. Distinguish `invoice_url` from the `send_invoice` action.
-2. Does sending an invoice charge the customer or create an order? What does?
-3. When does `invoice_url` first exist on a draft order?
-4. Give two ways to deliver the invoice link, and note which one sets `invoice_sent`.
-5. How should your system find out that the customer paid?
-6. Why not build your own payment page instead of using the hosted checkout?
+1. Distinguish `invoice_url` from `send_invoice`.
+2. Does sending an invoice charge or create an order? What does?
+3. When does `invoice_url` first exist?
+4. Give two ways to deliver the link; which sets `invoice_sent`?
+5. How should your system learn the customer paid?
+6. Why not build your own payment page?
 
 ---
 
 ## Summary
 
-- The draft order's **`invoice_url`** is a link to a **hosted checkout** pre-filled with Alice's order; it exists from the moment the draft is created.
-- **`POST /draft_orders/{id}/send_invoice.json`** emails Alice that link and moves the draft to **`invoice_sent`**. You can instead **read `invoice_url`** and deliver it yourself.
-- Sending an invoice **neither charges the customer nor creates an order** — only her completing the checkout does (Chapter 06). So `invoice_sent` is **not revenue**, and you should learn of payment via **webhooks**.
+- The **`invoice_url`** links to a **hosted checkout** pre-filled with Alice's order; it exists from draft creation.
+- **`POST /draft_orders/{id}/send_invoice.json`** emails it and sets **`invoice_sent`**; or **read `invoice_url`** and deliver it yourself.
+- Sending **neither charges nor creates an order** — only completing the checkout does. `invoice_sent` is **not revenue**; learn of payment via **webhooks**.
 - The hosted checkout keeps **card data off your systems**; GraphQL mirrors this with `draftOrderInvoiceSend`.
 
 ---
 
 ## What's Next
 
-Alice pays — or Himang collects payment another way. Either path ends the same: a real order.
+Alice pays — or Himang collects another way. Either ends the same: a real order.
 
-→ **Next chapter: [Completing a Draft Order → Order](06-completing-a-draft-order.md)** — the final step of the pipeline, where the draft becomes a committed Order and `order_id` finally fills in.
+→ **Next: [Completing a Draft Order → Order](06-completing-a-draft-order.md)** — the draft becomes a committed Order and `order_id` fills in.

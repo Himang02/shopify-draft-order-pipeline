@@ -1,22 +1,22 @@
 # Customers over REST
 
-You have variants and their IDs (the "what"). This chapter gets the "who": a **customer** record for Alice, and the ID the draft order will reference. The concept is from [Section 02, Ch. 03](../02-shopify-data-model/03-customers.md) — a store-owned buyer record, identified by email. Here we create and look one up over REST, and confront the one thing that makes customers trickier than products: **email is unique**, so you must *find-or-create*.
+You have the "what" (variant IDs). Now the "who": a **customer** record for Alice, and the ID the draft order references. The concept is from [Section 02, Ch. 03](../02-shopify-data-model/03-customers.md). The thing that makes customers trickier than products: **email is unique**, so you must *find-or-create*.
 
 ---
 
 ## Business Problem
 
-Alice calls. To build her draft order you need her as a Customer in Himang's store — with her email and shipping address — so Shopify can invoice her and file the eventual order under her history.
+To build Alice's draft order you need her as a Customer — email and shipping address — so Shopify can invoice her and file the order under her history.
 
-But Alice might already be a customer (she ordered last month). If your code blindly `POST`s a new customer with `alice@example.com`, Shopify rejects it: that email already identifies a customer. So the real task isn't "create a customer" — it's **"get me Alice's customer ID, creating her only if she's new."** That pattern is called **find-or-create**.
+But she might already exist. Blindly `POST`ing `alice@example.com` fails: that email already identifies a customer. So the task isn't "create a customer" — it's **"get Alice's customer ID, creating her only if new."** That's **find-or-create**.
 
 ---
 
 ## Mental Model
 
-> Because **email is the customer's identity** within a store (Section 02, Ch. 03), customer creation is not "always insert" — it's **find-by-email, then insert only if absent**.
+> Because **email is the customer's identity** in a store, creation isn't "always insert" — it's **find-by-email, then insert only if absent**.
 
-Two keys, from the concept chapter, both in play here:
+Two keys:
 
 - **email** — the natural key you *search* by.
 - **`id`** — the stable handle you *keep* and hand to the draft order.
@@ -41,23 +41,21 @@ Two keys, from the concept chapter, both in play here:
      use new customer.id
 ```
 
-That branch — search, then conditionally create — is the whole chapter.
+Search, then conditionally create — that's the whole chapter.
 
 ---
 
 ## REST Implementation
 
-Same authenticated request pattern as before.
-
-### Search for a customer by email
+### Search by email
 
 ```
 GET /admin/api/2024-10/customers/search.json?query=email:alice@example.com
 ```
 
-Returns `{ "customers": [ … ] }` — an array that's empty if nobody matches, or has Alice if she exists. The `query` uses Shopify's search syntax; `email:` targets the email field exactly.
+Returns `{ "customers": [ … ] }` — empty if nobody matches. `email:` targets the email field in Shopify's search syntax.
 
-### Create a customer
+### Create
 
 ```
 POST /admin/api/2024-10/customers.json
@@ -70,23 +68,16 @@ POST /admin/api/2024-10/customers.json
     "first_name": "Alice",
     "last_name": "Sharma",
     "addresses": [
-      {
-        "address1": "12 Bakers Lane",
-        "city": "Pune",
-        "province": "Maharashtra",
-        "country": "India",
-        "zip": "411001",
-        "default": true
-      }
+      { "address1": "12 Bakers Lane", "city": "Pune", "province": "Maharashtra", "country": "India", "zip": "411001", "default": true }
     ]
   }
 }
 ```
 
-- **`email`** is the only strictly required field, but name + address make the invoice and delivery work (Section 02, Ch. 03).
-- **`addresses[]`** with `default: true` sets Alice's default shipping address — the one the draft order can auto-use.
+- **`email`** is the only required field; name + address make the invoice and delivery work.
+- **`addresses[]`** with `default: true` sets the default the draft order can auto-use.
 
-The response includes the server-assigned **`id`** (e.g. `7001`) — the value you carry into the draft order.
+The response gives the server-assigned **`id`** (e.g. `7001`) — carried into the draft order.
 
 ### Runnable find-or-create
 
@@ -170,85 +161,85 @@ main().catch((e) => {
 });
 ```
 
-The important bit is `findOrCreateCustomer`: it **searches first** and only creates on a miss — the correct way to handle an identity-by-email object. A copy lives in [`examples/customers.js`](../examples/customers.js).
+`findOrCreateCustomer` **searches first**, creating only on a miss — the right way to handle an identity-by-email object. Copy in [`examples/customers.js`](../examples/customers.js).
 
 ---
 
 ## GraphQL Implementation
 
-The same in GraphQL (Section 05):
+Same in GraphQL (Section 05):
 
-- **Find:** the `customers` query with a `query:` argument (`"email:alice@example.com"`) — Shopify's search syntax carries over.
-- **Create:** the `customerCreate` mutation, returning the customer and a `userErrors` array. A duplicate email shows up in `userErrors` (business-rule failure) rather than as an HTTP error — the pattern Section 05 dwells on.
+- **Find:** the `customers` query with a `query:` argument (`"email:alice@example.com"`).
+- **Create:** the `customerCreate` mutation. A duplicate email shows up in **`userErrors`**, not as an HTTP error.
 
-Same find-or-create logic; you just read failures from `userErrors` instead of the HTTP status.
+Same find-or-create logic; you read failures from `userErrors` instead of the HTTP status.
 
 ---
 
 ## Production Considerations
 
-- **Always find-or-create; never blind-insert.** Duplicate-email inserts fail, and worse, sloppy handling can scatter half-formed "Alice" records. Search first.
-- **Handle the race.** Two requests can both search, both miss, and both try to create. Handle the create-time duplicate error by re-searching and using the existing record. (Idempotency again — a recurring production theme.)
-- **Store the `id`, match on email.** Keep the numeric `id` as your foreign key; use email only to *find*. Emails change; IDs don't (Section 02, Ch. 03).
-- **Respect marketing consent and privacy.** Don't flip `email_marketing_consent` without real consent, and remember customer data carries GDPR/CCPA obligations ([Section 04](../04-webhooks/), [Section 10](../10-production/)).
-- **Search is eventually consistent.** A just-created customer may take a moment to appear in `customers/search`. If you create then immediately search, prefer using the ID you already got from the create response.
+- **Always find-or-create; never blind-insert** — duplicate-email inserts fail and sloppy handling scatters half-formed records.
+- **Handle the race** — two requests can both miss and both try to create. On the create-time duplicate error, re-search and use the existing record.
+- **Store the `id`, match on email** — emails change, IDs don't.
+- **Respect consent and privacy** — don't flip `email_marketing_consent` without consent; customer data carries GDPR/CCPA obligations.
+- **Search is eventually consistent** — a just-created customer may lag in `customers/search`; use the `id` from the create response instead.
 
 ---
 
 ## Common Misconceptions
 
 **❌ "I just POST a new customer each time."**
-Reality: Email is unique per store. Blind inserts of an existing email fail. Use find-or-create.
+Email is unique — blind inserts of an existing email fail. Use find-or-create.
 
-**❌ "I should look the customer up by email later, in my own DB."**
-Reality: Store the `id` as the key; email is only for finding. If you key on email and Alice changes it, your link breaks.
+**❌ "I'll look the customer up by email in my own DB."**
+Store the `id` as the key; email is only for finding. Keying on email breaks when Alice changes it.
 
-**❌ "Creating a customer sends them an email / makes an account."**
-Reality: Creating a record is silent and is *not* a storefront login account (Section 02, Ch. 03). Invitations/accounts are separate, optional actions.
+**❌ "Creating a customer emails them / makes an account."**
+Creating a record is silent and is *not* a storefront login. Accounts are separate, optional.
 
-**❌ "A failed create means something is broken."**
-Reality: A duplicate-email failure is expected and meaningful — it's Shopify telling you the customer already exists. Handle it by searching and reusing.
+**❌ "A failed create means something's broken."**
+A duplicate-email failure is expected — Shopify telling you the customer exists. Search and reuse.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: What's the minimum to create a customer?**
-An email. But include name and a default address so invoices and delivery work for the draft order.
+**Q: Minimum to create a customer?**
+An email. But include name + a default address so invoices and delivery work.
 
 **Q: Why search first instead of catching the duplicate error?**
-Searching is the clean primary path and also gives you the *existing* customer's full record (and ID). Catching the error still requires a follow-up search to get that record, so search-first is simpler. Do handle the error too, for the race case.
+Searching is the clean primary path and gives you the existing record + ID. Still handle the error too, for the race.
 
-**Q: The customer I just created isn't showing up in search — bug?**
-Search can lag slightly behind creation (eventual consistency). Use the `id` from the create response directly instead of immediately searching for what you just made.
+**Q: My just-created customer isn't in search — bug?**
+Search lags creation (eventual consistency). Use the `id` from the create response.
 
 **Q: Can one customer have several addresses?**
-Yes (Section 02, Ch. 03). `addresses[]` holds many; mark one `default: true`. The draft order can pick a specific one.
+Yes — `addresses[]` holds many; mark one `default: true`.
 
 ---
 
 ## Interview Questions
 
-1. Why is customer creation a *find-or-create*, unlike product creation?
-2. Which field do you search by, and which do you store as the key? Why the difference?
-3. What happens if you `POST` a customer with an email that already exists?
-4. Describe the race condition in find-or-create and how you'd handle it.
-5. Does creating a customer record create a storefront login? Explain.
-6. Why might a just-created customer not appear immediately in search?
+1. Why is customer creation a find-or-create, unlike products?
+2. Which field do you search by, which do you store, and why?
+3. What happens if you `POST` an existing email?
+4. Describe the find-or-create race and how you'd handle it.
+5. Does creating a record create a login? Explain.
+6. Why might a just-created customer not appear in search?
 
 ---
 
 ## Summary
 
-- Getting Alice into the store is a **find-or-create**: `GET /customers/search.json?query=email:…`, then `POST /customers.json` only if the search is empty — because **email is a unique identity** (Section 02, Ch. 03).
-- Create with at least an **email**, ideally **name + a default address**, so invoicing and delivery work. The response gives the **`id`** you carry into the draft order.
-- **Store the `id`, match on email**; handle the **duplicate-email** result and the **create race** idempotently; remember **search is eventually consistent**.
-- GraphQL mirrors this with the `customers` query and `customerCreate` mutation, reporting duplicates via `userErrors` (Section 05).
+- Getting Alice in is a **find-or-create**: search by email, `POST` only if empty — because **email is a unique identity**.
+- Create with at least an **email** (ideally name + default address); the response gives the **`id`** you carry forward.
+- **Store the `id`, match on email**; handle **duplicate-email** and the **create race** idempotently; **search is eventually consistent**.
+- GraphQL mirrors this with `customers` + `customerCreate`, reporting duplicates via `userErrors`.
 
 ---
 
 ## What's Next
 
-You now have both halves a sale needs — **variant IDs** and a **customer ID**. Time to combine them into the object this whole repository is about.
+You have both halves — **variant IDs** and a **customer ID**.
 
-→ **Next chapter: [Creating a Draft Order](04-creating-a-draft-order.md)** — assemble Alice's customer and the tiramisu variants into an open draft order, and watch Shopify compute the totals.
+→ **Next: [Creating a Draft Order](04-creating-a-draft-order.md)** — combine them into an open draft order and watch Shopify compute the totals.

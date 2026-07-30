@@ -1,81 +1,73 @@
 # Authentication & the Admin API Access Token
 
-Section 02 was all concepts and JSON shapes. Now we make real calls — and the very first thing any real call needs is **proof that you're allowed to make it**. This chapter is about that proof: what an Admin API access token is, where it comes from, and how you attach it to a request.
-
-Get this chapter right and every other call in Section 03 is just "same auth, different endpoint."
+Now we make real calls — and every call first needs **proof you're allowed to make it**. This chapter: what an Admin API access token is, where it comes from, and how to attach it. Get it right and every other call in Section 03 is "same auth, different endpoint."
 
 ---
 
 ## Business Problem
 
-Himang's store holds real customer data and real orders. Shopify obviously can't let *anyone* who knows the store's URL read Alice's address or create orders. So before your server can touch the Admin API, it has to answer one question to Shopify's satisfaction:
+Himang's store holds real customer data and orders. Shopify can't let anyone who knows the store's URL read Alice's address. So before your server touches the Admin API, it must answer:
 
 > "Who are you, and are you allowed to do this to *this* store?"
 
-That's **authentication** (who you are) and **authorization** (what you're allowed to do). For the Admin API, both are carried by a single credential: an **access token**.
+That's **authentication** (who you are) and **authorization** (what you may do). Both are carried by one credential: an **access token**.
 
 ---
 
 ## Mental Model
 
-> An **Admin API access token** is a secret string that says "the bearer of this token is allowed to act on *this specific store*, within *these specific permissions*."
+> An **Admin API access token** is a secret string meaning "the bearer may act on *this store*, within *these permissions*."
 
-Two anchors from earlier chapters make this concrete:
+Two anchors from earlier:
 
-- **Per-store.** Recall stores are isolated tenants ([Section 01, Ch. 03](../01-introduction/03-merchants-stores-and-the-admin.md)). A token belongs to exactly one store. Himang's token works on Himang's store and nowhere else.
-- **Permission-scoped.** Recall staff permissions ([same chapter](../01-introduction/03-merchants-stores-and-the-admin.md)). A token is granted specific **scopes** — `read_products`, `write_draft_orders`, and so on — exactly like a staff member is granted permissions. The token can do only what its scopes allow.
+- **Per-store.** Stores are isolated tenants ([Section 01, Ch. 03](../01-introduction/03-merchants-stores-and-the-admin.md)); a token belongs to exactly one.
+- **Permission-scoped.** A token is granted specific **scopes** (`read_products`, `write_draft_orders`) — like staff permissions. It can do only what its scopes allow.
 
-Analogy: the token is a **key card** for one building (one store) that opens only certain doors (its scopes). Lose it and someone else can walk in — so it's a secret.
+Analogy: a **key card** for one building (one store) that opens only certain doors (its scopes). It's a secret.
 
 ---
 
 ## Where the token comes from: custom apps
 
-To get a token, you create an **app** on the store. Recall from [Section 01](../01-introduction/01-what-is-shopify.md) that "your server with a token" *is* the simplest form of a Shopify app. For a single store you control — exactly Himang's situation — the right kind is a **custom app**.
-
-The setup, done once in the Shopify admin:
+You get a token by creating an **app** on the store. For a single store you control — Himang's case — that's a **custom app**. Set up once in the admin:
 
 ```
 Shopify Admin → Settings → Apps and sales channels
              → Develop apps → Create an app
-             → Configure Admin API scopes  (tick read_products, write_draft_orders, ...)
+             → Configure Admin API scopes  (read_products, write_draft_orders, ...)
              → Install app
              → Reveal the Admin API access token   ←  this is your secret
 ```
 
-The result is a token that looks like:
+The result:
 
 ```
 shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Two things to know:
+- The `shpat_` prefix marks a Shopify custom-app access token.
+- You see the full token **once** — copy it into a secret store immediately. Lose it and you regenerate (invalidating the old one).
 
-- The `shpat_` prefix marks it as a **Sh**opify **p**rivate/custom-app **a**ccess **t**oken. (You'll meet other credential types shortly.)
-- You see the full token **once**. Copy it into a secret store immediately; if you lose it you regenerate (which invalidates the old one).
-
-> **Custom app vs. public app:** a *custom app* is built for one store and gives you a token directly — perfect for Himang. A *public app* is distributed to many stores and obtains tokens through **OAuth**, a multi-step handshake. We use custom apps for all of Section 03 and cover OAuth in [Section 09](../09-authentication/). Same kind of token at the end; different way of getting it.
+> **Custom app vs. public app:** a custom app is built for one store and gives a token directly — perfect here. A public app is distributed to many stores and gets tokens via **OAuth**. Section 03 uses custom apps; OAuth is [Section 09](../09-authentication/). Same token at the end, different way of getting it.
 
 ---
 
 ## The many "secrets" — and which one this is
 
-Beginners drown in Shopify's credential names. Here's the map, so you know exactly which string does what:
-
-| Credential | What it's for | Used in this section? |
+| Credential | What it's for | Used here? |
 |-----------|---------------|----------------------|
-| **Admin API access token** (`shpat_…`) | Authorize Admin API calls. **This chapter.** | ✅ Yes — the one you need |
-| **API key** & **API secret key** | Identify the *app* itself; used in the OAuth handshake for public apps. | Later ([Section 09](../09-authentication/)) |
-| **Webhook signing secret** | Verify that an incoming webhook really came from Shopify. | [Section 04](../04-webhooks/) |
-| **Storefront API access token** | Public, browser-safe token for the Storefront API. | Not this flow ([Section 01](../01-introduction/01-what-is-shopify.md)) |
+| **Admin API access token** (`shpat_…`) | Authorize Admin API calls. | ✅ The one you need |
+| **API key** & **API secret key** | Identify the *app*; used in OAuth for public apps. | [Section 09](../09-authentication/) |
+| **Webhook signing secret** | Verify incoming webhooks are from Shopify. | [Section 04](../04-webhooks/) |
+| **Storefront API access token** | Public, browser-safe token for the Storefront API. | Not this flow |
 
-The single most common beginner mix-up — using the **API secret** to verify webhooks — gets its own correction in [Section 04](../04-webhooks/). For now: **the credential that authorizes your Admin API calls is the `shpat_` access token, nothing else.**
+The classic mix-up — using the **API secret** to verify webhooks — is corrected in [Section 04](../04-webhooks/). For now: **Admin API calls use the `shpat_` access token, nothing else.**
 
 ---
 
-## Architecture: how a request is authenticated
+## Architecture
 
-Every Admin API request carries the token in a header, and Shopify checks it before doing anything:
+Every request carries the token in a header; Shopify checks it first:
 
 ```
    ┌─────────────┐   HTTPS request with header:              ┌───────────┐
@@ -90,13 +82,13 @@ Every Admin API request carries the token in a header, and Shopify checks it bef
                               ◄──────────  deny  → 401 / 403         ┘
 ```
 
-Notice both halves of the identity from [Section 01](../01-introduction/03-merchants-stores-and-the-admin.md) at work: the **`myshopify.com` domain in the URL** says *which store*, and the **token in the header** proves *you're allowed*. Together they pin the request to one tenant with one permission set.
+Both halves of the identity from [Section 01](../01-introduction/03-merchants-stores-and-the-admin.md): the **`myshopify.com` domain** says *which store*, the **token** proves *you're allowed*.
 
 ---
 
-## The anatomy of a request
+## Anatomy of a request
 
-Every REST Admin API call has the same four parts. Learn them once:
+Every REST Admin API call has four parts:
 
 ```
    METHOD   https://{shop}.myshopify.com/admin/api/{version}/{resource}.json
@@ -105,25 +97,25 @@ Every REST Admin API call has the same four parts. Learn them once:
    body     { ... }                             (for POST/PUT)
 ```
 
-- **`{shop}`** — the store's permanent `myshopify.com` subdomain (not the custom domain — [Section 01, Ch. 03](../01-introduction/03-merchants-stores-and-the-admin.md)).
-- **`{version}`** — a dated API version like `2024-10`. **Always pin one explicitly** ([Section 01](../01-introduction/01-what-is-shopify.md)); leaving it out or drifting invites breakage.
+- **`{shop}`** — the permanent `myshopify.com` subdomain (not the custom domain).
+- **`{version}`** — a dated version like `2024-10`. **Always pin one.**
 - **`{resource}.json`** — the object family: `products`, `customers`, `draft_orders`, `orders`.
-- **`X-Shopify-Access-Token`** — the header carrying your `shpat_` token. This is the auth.
+- **`X-Shopify-Access-Token`** — carries the token. This is the auth.
 
-A first real call — fetch the store's own details (the `shop` object from [Section 01](../01-introduction/03-merchants-stores-and-the-admin.md)), which is the "hello world" of the Admin API:
+The "hello world" call — fetch the store's own details:
 
 ```
 GET https://himangs-tiramisu.myshopify.com/admin/api/2024-10/shop.json
     X-Shopify-Access-Token: shpat_xxxxxxxxxxxxxxxxxxxx
 ```
 
-A `200` with the store's name and currency means your token works. A `401 Unauthorized` means the token is wrong or missing.
+A `200` with the store name means your token works; `401` means it's wrong or missing.
 
 ---
 
 ## REST Implementation (runnable)
 
-Here's the smallest real Node.js program that authenticates and calls the API. It reads the secret from an environment variable — **never hard-code tokens** — and uses the built-in `fetch` (Node 18+).
+The smallest program that authenticates. It reads the secret from the environment — **never hard-code tokens** — using built-in `fetch` (Node 18+).
 
 ```javascript
 // verify-auth.js — confirm our Admin API token works
@@ -164,12 +156,12 @@ main().catch((err) => {
 });
 ```
 
-Line by line, the parts that matter:
+The parts that matter:
 
-- **`process.env.*`** — secrets come from the environment, not the source. This is the single most important security habit in the whole section.
-- **The URL** combines the `myshopify.com` shop domain, the pinned `API_VERSION`, and the `shop.json` resource.
-- **`X-Shopify-Access-Token`** header — the token. This is what makes it *your* authenticated call.
-- **`res.ok` check** — always handle failure. `401` = auth problem; `403` = authenticated but the token's scopes don't permit this.
+- **`process.env.*`** — secrets from the environment, not the source. The most important habit in this section.
+- **The URL** combines the shop domain, pinned version, and resource.
+- **`X-Shopify-Access-Token`** — the token; what makes it *your* call.
+- **`res.ok` check** — `401` = auth problem; `403` = valid token, missing scope.
 
 Run it:
 
@@ -180,7 +172,7 @@ node verify-auth.js
 # → Authenticated. Store: Himang's Tiramisu | INR
 ```
 
-This exact pattern — read env, build URL, send token header, check `res.ok` — repeats in every remaining chapter of this section. A runnable copy lives in [`examples/verify-auth.js`](../examples/verify-auth.js).
+This pattern — read env, build URL, send token header, check `res.ok` — repeats through the section. Copy in [`examples/verify-auth.js`](../examples/verify-auth.js).
 
 ---
 
@@ -195,84 +187,82 @@ POST https://{shop}.myshopify.com/admin/api/{version}/graphql.json
      body: { "query": "{ shop { name currencyCode } }" }
 ```
 
-The **authentication is identical** — the same `shpat_` token in the same header. What differs is only the *shape* of the request (one `graphql.json` endpoint, query in the body), which is Section 05's whole topic. The takeaway here: **auth is shared across REST and GraphQL; you learn it once.**
+**Authentication is identical** — same token, same header. Only the request shape differs (Section 05's topic). **Auth is shared across REST and GraphQL; learn it once.**
 
 ---
 
 ## Production Considerations
 
-- **Never commit tokens.** Keep them in environment variables or a secret manager. Add `.env` to `.gitignore` (this repo already does). A leaked `shpat_` token is full access to the store's data.
-- **Request the least scope you need.** If your integration only creates draft orders, don't grant `write_orders` or customer-read scopes you won't use. Least privilege limits the blast radius of a leak.
-- **Always pin the API version.** Hard-code `2024-10` (or whichever) and migrate deliberately. Unpinned calls break silently when Shopify moves on.
-- **Handle 401 vs 403 distinctly.** `401` → the token is bad/missing (auth). `403` → the token is valid but lacks the scope (authorization). They need different fixes; don't lump them together.
-- **Rotate on exposure.** If a token might have leaked, regenerate it in the admin immediately — that invalidates the old one.
-- **Mind rate limits.** Authenticated doesn't mean unlimited. REST uses a leaky-bucket limit; a `429` means slow down. Details in [Section 10](../10-production/).
+- **Never commit tokens.** Use env vars or a secret manager; `.gitignore` your `.env`. A leaked `shpat_` token is full access.
+- **Least scope.** Grant only what you use — it limits the blast radius of a leak.
+- **Pin the API version** and migrate deliberately; unpinned calls break silently.
+- **Handle 401 vs 403 distinctly** — `401` = bad/missing token; `403` = valid token, missing scope. Different fixes.
+- **Rotate on exposure** — regenerate in the admin, invalidating the old token.
+- **Mind rate limits** — a `429` means slow down ([Section 10](../10-production/)).
 
 ---
 
 ## Common Misconceptions
 
-**❌ "I use the API secret key to authenticate Admin API calls."**
-Reality: Admin API calls use the **`shpat_` access token** in the `X-Shopify-Access-Token` header. The API secret is for the OAuth/app-identity flow, not for authorizing everyday Admin calls.
+**❌ "I authenticate Admin calls with the API secret key."**
+Admin calls use the **`shpat_` access token** in `X-Shopify-Access-Token`. The API secret is for OAuth, not everyday Admin calls.
 
 **❌ "One token works across all my stores."**
-Reality: Tokens are per-store. Each store's app issues its own token, valid only for that store.
+Tokens are per-store.
 
 **❌ "A valid token means I can do anything."**
-Reality: A token can only do what its **scopes** allow. A `403` on a valid token means "authenticated, but not permitted" — you need to add the scope and reinstall.
+Only what its **scopes** allow. A `403` on a valid token = "authenticated, not permitted" — add the scope and reinstall.
 
-**❌ "The token goes in the URL / as a query parameter."**
-Reality: It goes in the `X-Shopify-Access-Token` **header**. Putting secrets in URLs risks them being logged.
+**❌ "The token goes in the URL."**
+It goes in the `X-Shopify-Access-Token` **header**. Secrets in URLs get logged.
 
-**❌ "I can leave the API version out of the URL."**
-Reality: Pin it explicitly. Relying on a default means your integration's behavior can change under you without warning.
+**❌ "I can leave the API version out."**
+Pin it — relying on a default lets behavior change under you.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: What's the difference between the API key/secret and the access token?**
-The **API key/secret** identify the *app* and are used in the OAuth handshake (public apps). The **access token** (`shpat_…`) is what actually authorizes Admin API requests. For a custom app on one store, you get the access token directly and rarely touch the key/secret.
+**Q: API key/secret vs. access token?**
+The key/secret identify the *app* (OAuth handshake); the access token (`shpat_…`) authorizes Admin requests. For a custom app you get the token directly and rarely touch the key/secret.
 
-**Q: Custom app or public app for Himang's store?**
-Custom app. It's built for a single store you control and hands you a token immediately — no OAuth. Public apps are for distributing to many merchants and require OAuth ([Section 09](../09-authentication/)).
+**Q: Custom or public app for Himang?**
+Custom — one store, token directly, no OAuth. Public apps are for many merchants and use OAuth ([Section 09](../09-authentication/)).
 
-**Q: How is authentication different for GraphQL?**
-It isn't. Same `shpat_` token, same header. Only the request shape and endpoint differ (Section 05).
+**Q: Different auth for GraphQL?**
+No — same token, same header. Only the request shape differs (Section 05).
 
-**Q: I got a 403 but my token is valid — why?**
-The token lacks the required **scope** for that action. Add the scope in the app configuration, reinstall the app to reissue the token, and retry.
+**Q: 403 but my token is valid — why?**
+It lacks the required **scope**. Add it in the app config, reinstall to reissue the token, retry.
 
-**Q: Where should I store the token?**
-In an environment variable or a dedicated secret manager — never in code or in git. Treat it like a password to the store's data.
+**Q: Where do I store the token?**
+An env var or secret manager — never in code or git. Treat it like a store password.
 
 ---
 
 ## Interview Questions
 
-1. What is an Admin API access token, and what two things does it encode (identity and what else)?
-2. Which HTTP header carries the token, and what does it look like?
-3. What's the difference between authentication and authorization, and which HTTP status maps to each failure?
+1. What is an access token, and what two things does it encode?
+2. Which header carries it, and what does it look like?
+3. Authentication vs. authorization — which HTTP status maps to each failure?
 4. Distinguish the API secret key from the access token.
-5. Why must the API version be pinned in the URL?
-6. Custom app vs. public app — which gives you a token directly, and which uses OAuth?
-7. Name three of Shopify's distinct "secrets" and what each is for.
+5. Why pin the API version?
+6. Custom vs. public app — which gives a token directly?
+7. Name three of Shopify's distinct secrets and their uses.
 
 ---
 
 ## Summary
 
-- Every Admin API call needs an **access token** (`shpat_…`) carried in the **`X-Shopify-Access-Token` header**. That's authentication *and* authorization in one string.
-- A token is **per-store** and **scope-limited** — it acts on one tenant and can do only what its scopes permit.
-- You get a token by creating a **custom app** on the store (direct token, no OAuth). **Public apps** use OAuth ([Section 09](../09-authentication/)).
-- Don't confuse Shopify's secrets: the **access token** authorizes Admin calls; the **API secret** is for OAuth; the **webhook secret** verifies webhooks ([Section 04](../04-webhooks/)).
-- A request is `METHOD {shop}.myshopify.com/admin/api/{version}/{resource}.json` + the token header. **Pin the version.** Handle `401` (bad token) and `403` (missing scope) distinctly.
-- **Auth is shared with GraphQL** — same token, same header — so you learn it exactly once.
+- Every Admin API call needs an **access token** (`shpat_…`) in the **`X-Shopify-Access-Token` header** — authentication *and* authorization in one string.
+- A token is **per-store** and **scope-limited**.
+- You get one from a **custom app** (direct token, no OAuth); **public apps** use OAuth.
+- Don't confuse the secrets: **access token** authorizes Admin calls, **API secret** is for OAuth, **webhook secret** verifies webhooks.
+- A request is `{shop}.myshopify.com/admin/api/{version}/{resource}.json` + the token header. **Pin the version.** Handle `401` vs `403` distinctly.
+- **Auth is shared with GraphQL.**
 
 ---
 
 ## What's Next
 
-Your server can now prove who it is. Time to use that to read and write real catalog data.
-
-→ **Next chapter: [Products & Variants over REST](02-products-and-variants-over-rest.md)** — list, fetch, and create products (and get the variant IDs the draft-order pipeline depends on) using the authenticated request pattern from this chapter.
+→ **Next: [Products & Variants over REST](02-products-and-variants-over-rest.md)** — list, fetch, and create products (and get the variant IDs the pipeline needs) using this auth pattern.
