@@ -2,65 +2,33 @@
 
 > A book-quality learning repository that teaches Shopify to backend engineers from the ground up.
 
-This is not API documentation. It is not a pile of notes.
-
-It is a **structured course**. If you are a backend developer who has never touched Shopify, you can start at the top and, by the end, understand Shopify well enough to build production-grade integrations — without needing any other resource.
+Not API docs, not a pile of notes — a **structured course**. A backend developer who has never touched Shopify can start at the top and, by the end, build production-grade integrations without any other resource.
 
 ---
 
 ## Who this is for
 
-This course assumes you already know:
+Assumes you know: programming, backend development, HTTP, REST, databases, JSON, and Node.js / Express.
 
-- Programming
-- Backend development
-- HTTP
-- REST APIs
-- Databases
-- JSON
-- Node.js / Express
-
-It assumes you know **nothing** about Shopify, ecommerce, products, variants, draft orders, orders, checkouts, payments, fulfillment, apps, GraphQL, webhooks, OAuth, Polaris, or Liquid.
-
-Every Shopify concept is introduced before it is used.
+Assumes you know **nothing** about Shopify, ecommerce, products, variants, draft orders, orders, checkouts, payments, fulfillment, apps, GraphQL, webhooks, OAuth, Polaris, or Liquid. Every Shopify concept is introduced before it's used.
 
 ---
 
 ## How to read this course
 
-Read the sections in order. Each one builds on the last.
-
-Every chapter follows the same rhythm, so you always know what to expect:
-
-1. **Business Problem** — the real-world situation that forced this concept to exist.
-2. **Mental Model** — the concept explained with an analogy, no code.
-3. **Architecture** — an ASCII diagram of how the pieces fit.
-4. **Internal Working** — who creates it, who owns it, what happens next.
-5. **REST Implementation** — the endpoint, headers, body, response, field by field.
-6. **GraphQL Implementation** — the same thing in GraphQL, and why it differs.
-7. **Production Considerations** — pitfalls, security, scaling, best practices.
-8. **Common Misconceptions**, **FAQ**, **Interview Questions**, **Summary**, **What's Next**.
-
-We optimize for *understanding*, never for shorter documentation.
+Read the sections in order — each builds on the last. Every chapter follows the same rhythm: **Business Problem → Mental Model → Architecture (ASCII) → Internal Working → REST → GraphQL → Production Considerations → Common Misconceptions → FAQ → Interview Questions → Summary → What's Next.**
 
 ---
 
 ## The running example
 
-To keep everything concrete, one imaginary store is used throughout the entire course:
+One imaginary store runs through the whole course:
 
-**Store:** Himang's Tiramisu
+- **Store:** Himang's Tiramisu
+- **Products:** Classic, Chocolate, Matcha Tiramisu
+- **Customers:** Alice, Bob
 
-**Products:**
-- Classic Tiramisu
-- Chocolate Tiramisu
-- Matcha Tiramisu
-
-**Customers:**
-- Alice
-- Bob
-
-Whenever you see a product or a customer in an example, it will be one of these.
+Every product or customer in an example is one of these.
 
 ---
 

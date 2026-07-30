@@ -1,12 +1,12 @@
 # Variables
 
-The last chapter's queries baked values right into the query text — an email, variant IDs, a customer ID. That's the GraphQL equivalent of building SQL by string concatenation: brittle, hard to reuse, and unsafe. **Variables** are the fix. This is a short, practical chapter.
+The last chapter baked values into the query text — an email, IDs. That's the GraphQL equivalent of building SQL by string concatenation: brittle and unsafe. **Variables** are the fix.
 
 ---
 
 ## Business Problem
 
-You'll create a draft order for many different customers and variants. Rewriting the whole query string each time — splicing in IDs by hand — is error-prone and, if any value comes from user input, a potential injection risk. You want to write the query **once** and pass **values** into it, the way you'd use parameterized statements instead of string-concatenated SQL.
+You'll create draft orders for many customers and variants. Rewriting the query string each time — splicing IDs by hand — is error-prone and, if a value comes from user input, an injection risk. You want to write the query **once** and pass **values** in, like parameterized SQL.
 
 ---
 
@@ -14,13 +14,13 @@ You'll create a draft order for many different customers and variants. Rewriting
 
 > A **variable** is a named, typed placeholder declared on the operation and supplied separately as JSON. The query text stays constant; only the `variables` object changes per call.
 
-Three parts work together:
+Three parts:
 
-1. **Declare** the variables (with types) on the `query`/`mutation`.
-2. **Use** them (prefixed with `$`) inside the body.
-3. **Supply** their values as a separate `variables` JSON object in the request.
+1. **Declare** variables (with types) on the `query`/`mutation`.
+2. **Use** them (`$`-prefixed) in the body.
+3. **Supply** their values as a separate `variables` JSON object.
 
-This mirrors prepared statements: the statement is fixed and reusable; the parameters travel alongside.
+Like prepared statements: fixed statement, parameters alongside.
 
 ---
 
@@ -28,7 +28,7 @@ This mirrors prepared statements: the statement is fixed and reusable; the param
 
 ### A query with a variable
 
-The customer lookup from [Chapter 02](02-queries-vs-mutations.md), now parameterized:
+The customer lookup, parameterized:
 
 ```graphql
 query GetCustomer($search: String!) {
@@ -38,19 +38,19 @@ query GetCustomer($search: String!) {
 }
 ```
 
-Supplied with a separate variables object:
+Variables:
 
 ```json
 { "search": "email:alice@example.com" }
 ```
 
-- **`query GetCustomer(...)`** — the operation now has a **name** (`GetCustomer`) and a **variable declaration**.
-- **`$search: String!`** — a variable named `search` of type `String`. The **`!`** means *non-null* (required).
-- **`query: $search`** — the variable used in place of a literal.
+- **`query GetCustomer(...)`** — the operation has a **name** and a **variable declaration**.
+- **`$search: String!`** — a `String` variable; **`!`** means non-null (required).
+- **`query: $search`** — used in place of a literal.
 
 ### A mutation with variables
 
-`draftOrderCreate` with its input passed as a variable — the clean, reusable form:
+`draftOrderCreate` with its input as a variable:
 
 ```graphql
 mutation CreateDraft($input: DraftOrderInput!) {
@@ -72,11 +72,11 @@ Variables:
 }
 ```
 
-Now the same mutation text serves every draft order — only the `input` JSON changes. Note the variable's type is **`DraftOrderInput!`**, a type Shopify defines; GraphQL validates your `variables` against it before executing.
+The same mutation text serves every draft — only the `input` JSON changes. The type **`DraftOrderInput!`** is defined by Shopify; GraphQL validates your variables against it before executing.
 
-### How it's sent over HTTP
+### Over HTTP
 
-The request body carries **both** the query and the variables as separate keys:
+The body carries **both** query and variables:
 
 ```
 POST /admin/api/2024-10/graphql.json
@@ -89,90 +89,90 @@ Content-Type: application/json
 }
 ```
 
-The two-key body — `{ query, variables }` — is the standard shape. Your GraphQL helper always sends both.
+The `{ query, variables }` body is the standard shape.
 
 ---
 
 ## Types and the `!`
 
-Variables are **typed**, and GraphQL enforces the types before running anything:
+Variables are **typed**, enforced before execution:
 
 - **Scalars:** `String`, `Int`, `Float`, `Boolean`, `ID`.
-- **`!` = non-null (required).** `String!` must be provided; `String` may be omitted/null.
-- **`[Type!]!`** = a required list of non-null items (e.g. a required, non-empty-ish list of line items).
-- **Input objects:** complex inputs like `DraftOrderInput` bundle many fields; Shopify's schema defines exactly what's inside.
+- **`!` = non-null (required).** `String!` must be provided; `String` may be null.
+- **`[Type!]!`** = a required list of non-null items.
+- **Input objects** like `DraftOrderInput` bundle many fields; Shopify's schema defines them.
 
-If you pass a value of the wrong type, or omit a required (`!`) one, the request fails **validation** (a top-level `errors` entry) *before* execution — a helpful, early failure.
+Wrong type or a missing `!` variable fails **validation** (a top-level `errors` entry) *before* execution.
 
 ---
 
 ## Production Considerations
 
-- **Always use variables for dynamic values.** Never string-concatenate user input into query text — it's unreadable and unsafe. Variables keep the query static and pass data as structured JSON.
-- **Name your operations.** `query GetCustomer`, `mutation CreateDraft`. Names aid logging, debugging, and are required when a request contains multiple operations.
-- **Let types catch mistakes early.** A wrong type or missing `!` variable fails validation before execution — cheaper than a runtime surprise. Read Shopify's schema for exact input shapes.
-- **Reuse one query, many variable sets.** The point of variables: define the operation once, call it repeatedly with different `variables`. Cache the query string; vary the data.
-- **Variables don't replace `userErrors` checks.** Validation catches *type* problems; business rules (bad variant id) still surface in `userErrors` (Chapter 06).
+- **Always use variables for dynamic values** — never string-concatenate user input.
+- **Name your operations** (`GetCustomer`, `CreateDraft`) — aids logging and is required with multiple operations in one document.
+- **Let types catch mistakes early** — a mismatch fails validation before execution.
+- **Reuse one query, many variable sets** — cache the query string, vary the data.
+- **Variables don't replace `userErrors`** — validation catches *type* problems; business rules still surface in `userErrors` (Chapter 06).
 
 ---
 
 ## Common Misconceptions
 
-**❌ "I'll just interpolate values into the query string."**
-Reality: That's the brittle, unsafe path. Use declared, typed variables passed as a separate `variables` object.
+**❌ "I'll interpolate values into the query string."**
+Brittle and unsafe. Use declared, typed variables.
 
 **❌ "Variables go inside the query text."**
-Reality: They're *declared* in the text (`$x: Type`) and *supplied* in a separate `variables` JSON key of the request body.
+Declared in the text (`$x: Type`), supplied in a separate `variables` JSON key.
 
 **❌ "The `!` is optional decoration."**
-Reality: `!` means non-null/required and is type-checked. Omitting a required variable fails validation.
+It means non-null/required and is type-checked.
 
 **❌ "Types are just documentation."**
-Reality: GraphQL validates variables against their declared types before executing, rejecting mismatches up front.
+GraphQL validates against them before executing.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: Where do variable values actually go?**
-In a separate `variables` key in the JSON request body, alongside `query`. The query text references them by `$name`; the values live in `variables`.
+**Q: Where do the values go?**
+In a separate `variables` key alongside `query`. The text references `$name`; the values live in `variables`.
 
-**Q: What does `String!` vs `String` mean?**
-`String!` is a required, non-null string; `String` is optional/nullable. The `!` enforces presence.
+**Q: `String!` vs `String`?**
+`String!` is required/non-null; `String` is optional.
 
 **Q: What's `DraftOrderInput`?**
-An **input object type** Shopify defines, bundling the fields a draft order create accepts (line items, customer, discount, etc.). You pass a matching JSON object as the variable; the schema validates it.
+An input object type Shopify defines, bundling the fields a draft-order create accepts. Pass a matching JSON object; the schema validates it.
 
-**Q: Why name operations like `CreateDraft`?**
-Clarity in logs/errors, and it's required if a single request document contains more than one operation. It's good practice even with one.
+**Q: Why name operations?**
+Clarity in logs/errors, and required with multiple operations in one document.
 
 **Q: Do variables protect against injection?**
-They keep dynamic values out of the query text and pass them as typed JSON, which is the safe, structured approach — much better than concatenating strings.
+Yes — they keep dynamic values out of the query text as typed JSON.
 
 ---
 
 ## Interview Questions
 
-1. What problem do GraphQL variables solve, and what REST/SQL practice are they analogous to?
-2. What are the three parts of using a variable (declare, use, supply)?
-3. In the HTTP request, where do the query and the variable values each go?
-4. What does the `!` in `String!` or `DraftOrderInput!` mean?
-5. When does a type mismatch get caught, and via which error channel?
-6. Why name your operations?
+1. What do variables solve, and what SQL practice are they like?
+2. The three parts of using a variable?
+3. Where do the query and variable values each go in the request?
+4. What does `!` mean?
+5. When is a type mismatch caught, and via which channel?
+6. Why name operations?
 
 ---
 
 ## Summary
 
-- **Variables** are named, typed placeholders that keep the query text **static** while values are supplied separately as a **`variables` JSON object** — like prepared statements.
-- You **declare** them on the operation (`$input: DraftOrderInput!`), **use** them by `$name` in the body, and **supply** them in the request's `variables` key. The body is `{ query, variables }`.
-- Types are **enforced**: `!` means required/non-null, and mismatches fail **validation** (top-level `errors`) before execution.
-- Use variables for **all dynamic values** (never string-concatenate), **name** your operations, and remember variables don't replace **`userErrors`** checks.
+- **Variables** are named, typed placeholders keeping the query **static** while values come in a separate **`variables`** object — like prepared statements.
+- **Declare** on the operation, **use** by `$name`, **supply** in the `variables` key. Body is `{ query, variables }`.
+- Types are **enforced**: `!` means required, mismatches fail **validation** before execution.
+- Use variables for **all dynamic values**, **name** operations, and remember they don't replace **`userErrors`** checks.
 
 ---
 
 ## What's Next
 
-Every example has used those `gid://shopify/...` IDs where REST used a bare integer. It's time to explain them.
+Every example uses `gid://shopify/...` IDs where REST used a bare integer. Time to explain them.
 
-→ **Next chapter: [Global IDs](04-global-ids.md)** — what `gid://shopify/ProductVariant/9002` is, why GraphQL uses it, and how it relates to the REST integer IDs.
+→ **Next: [Global IDs](04-global-ids.md)** — what `gid://shopify/ProductVariant/9002` is, and how it relates to REST integers.

@@ -1,12 +1,12 @@
 # Fragments
 
-The last piece of GraphQL vocabulary, and a small one. As queries multiply, you find yourself listing the *same* fields over and over — every place you fetch a variant, you write `id price sku title`. **Fragments** let you name that field set once and reuse it. This closes Section 05.
+The last piece of GraphQL vocabulary, and a small one. As queries multiply, you list the *same* fields over and over — every variant fetch is `id price sku title`. **Fragments** name that set once and reuse it.
 
 ---
 
 ## Business Problem
 
-You have several queries that fetch variants: one for a product page, one for a draft order's line items, one for search results. Each repeats:
+Several queries fetch variants — a product page, a draft's line items, search results — each repeating:
 
 ```graphql
 id
@@ -15,28 +15,21 @@ sku
 title
 ```
 
-Copy-pasted field lists drift: you add `inventoryQuantity` in one place and forget the others, and now your queries disagree about what "a variant" looks like. You want a **single definition** of "the variant fields I care about," reused everywhere — the GraphQL version of extracting a shared function or constant.
+Copy-pasted lists drift: you add `inventoryQuantity` in one place, forget the others, and your queries disagree about what "a variant" is. You want a **single definition**, reused everywhere — like extracting a shared function.
 
 ---
 
 ## Mental Model
 
-> A **fragment** is a named, reusable set of fields defined on a particular type. You define it once and **spread** it (`...FragmentName`) into any query or mutation that selects that type.
+> A **fragment** is a named, reusable set of fields defined on a type. Define it once, **spread** it (`...Name`) into any query or mutation that selects that type.
 
-The two moves:
-
-1. **Define** a fragment `on` a type, listing its fields.
-2. **Spread** it with `...Name` wherever you'd otherwise repeat those fields.
-
-It's straightforward DRY: define once, reuse many times, change in one place.
+Two moves: **define** `on` a type, then **spread** with `...Name`. Straightforward DRY — change in one place.
 
 ---
 
 ## Implementation
 
 ### Define and spread
-
-Define a `VariantFields` fragment on the `ProductVariant` type, then spread it:
 
 ```graphql
 fragment VariantFields on ProductVariant {
@@ -50,57 +43,48 @@ query {
   product(id: "gid://shopify/Product/8001") {
     title
     variants(first: 10) {
-      edges {
-        node {
-          ...VariantFields      # spreads id, price, sku, title
-        }
-      }
+      edges { node { ...VariantFields } }   # spreads id, price, sku, title
     }
   }
 }
 ```
 
-- **`fragment VariantFields on ProductVariant { … }`** — the definition. `on ProductVariant` means it can only be spread where a `ProductVariant` is being selected (the schema enforces this).
-- **`...VariantFields`** — the spread, expanding to exactly those four fields. Add a field to the fragment and *every* query using it gets it — no drift.
+- **`fragment VariantFields on ProductVariant { … }`** — `on ProductVariant` means it can only be spread where a `ProductVariant` is selected (schema-enforced).
+- **`...VariantFields`** — expands to those four fields. Add one to the fragment and *every* query using it gets it.
 
 ### Reuse across operations
 
-The same fragment drops into a completely different query — say, a draft order's line-item variants — with no repetition:
+The same fragment drops into a different query:
 
 ```graphql
 query DraftLineItems($id: ID!) {
   draftOrder(id: $id) {
     lineItems(first: 20) {
-      edges {
-        node {
-          quantity
-          variant { ...VariantFields }   # same fields, reused
-        }
-      }
+      edges { node { quantity variant { ...VariantFields } } }   # same fields, reused
     }
   }
 }
 ```
 
-One definition of "variant fields," used in two places. Change it once; both update.
+One definition, two places. Change it once; both update.
 
 ### Inline fragments (a related form)
 
-You met one already in [Chapter 04](04-global-ids.md): `... on ProductVariant { … }` inside a `node(id:)` lookup. That's an **inline fragment** — an *unnamed* fragment used to say "if this object is of type X, select these fields." It's the same fragment idea applied to **polymorphic** results (a field that could return several types), rather than for reuse:
+You met one in [Chapter 04](04-global-ids.md): `... on ProductVariant { … }` in a `node(id:)` lookup. That's an **inline fragment** — an *unnamed* one saying "if this object is type X, select these fields." Same idea, applied to **polymorphic** results rather than reuse:
 
 ```graphql
 node(id: "gid://shopify/ProductVariant/9002") {
   ... on ProductVariant {   # inline: "when it's a ProductVariant, take these"
-    ...VariantFields         # you can even spread a named fragment inside
+    ...VariantFields         # you can spread a named fragment inside
   }
 }
 ```
 
-So there are two flavors: **named fragments** for reuse (define once, spread many), and **inline fragments** for type-conditional selection on polymorphic fields. Same underlying concept.
+So two flavors: **named fragments** for reuse, **inline fragments** for type-conditional selection. Same underlying concept.
 
 ### Over HTTP
 
-A named fragment definition travels in the **same query string** as the operation that uses it — you send both together:
+A named fragment travels in the **same query string** as the operation:
 
 ```json
 {
@@ -108,61 +92,61 @@ A named fragment definition travels in the **same query string** as the operatio
 }
 ```
 
-The fragment isn't stored server-side; it's part of the request, right alongside the operation.
+It isn't stored server-side; it's part of the request.
 
 ---
 
 ## Production Considerations
 
-- **Use fragments to keep field sets consistent.** Define "the fields I need for a variant / an order / a customer" once, and every query stays in sync automatically. This is the main payoff.
-- **Fragments are typed — spread them only where the type matches.** `VariantFields on ProductVariant` can't be spread into a `Customer` selection. The schema rejects mismatches, catching errors early.
-- **Great fit for client tooling.** In real apps (especially with GraphQL client libraries), co-locating a fragment with the component that needs the data is a common, powerful pattern. Even without a library, fragments reduce duplication.
-- **Watch cost when composing.** Spreading a big fragment into a deeply paginated query multiplies the fields fetched, which raises query cost ([Section 10](../10-production/)). Reuse doesn't make fields free — keep fragments lean.
-- **Inline fragments are for polymorphism.** Reach for `... on Type` when a field can return multiple types (like `node`) and you need type-specific fields. Reach for named fragments when you're repeating a field list.
+- **Use fragments to keep field sets consistent** — define "the fields for a variant" once; every query stays in sync. The main payoff.
+- **Fragments are typed** — spread only where the type matches; the schema rejects mismatches early.
+- **Great with client tooling** — co-locating a fragment with the component that needs the data is a common pattern.
+- **Watch cost when composing** — a spread expands to real fields that count toward query cost. Keep fragments lean.
+- **Inline fragments are for polymorphism** (`... on Type` on fields like `node`); named fragments are for repeated field lists.
 
 ---
 
 ## Common Misconceptions
 
-**❌ "A fragment is stored on the server and referenced by name later."**
-Reality: A named fragment is sent *with* the operation in the same request. It's a client-side reuse mechanism, not server-stored.
+**❌ "A fragment is stored on the server."**
+It's sent *with* the operation — a client-side reuse mechanism.
 
 **❌ "I can spread a fragment anywhere."**
-Reality: A fragment is defined `on` a type and can only be spread where that type is selected. The schema enforces it.
+Only where its type is selected. The schema enforces it.
 
-**❌ "Named and inline fragments are unrelated features."**
-Reality: Same idea. Named fragments are for *reuse*; inline fragments (`... on Type`) are for *type-conditional* selection on polymorphic fields.
+**❌ "Named and inline fragments are unrelated."**
+Same idea — reuse vs. type-conditional selection.
 
 **❌ "Fragments make my query cheaper."**
-Reality: They reduce *duplication in your source*, not the fields fetched. A spread expands to real fields that still count toward query cost.
+They reduce *source* duplication, not fields fetched. The spread still counts toward cost.
 
 ---
 
 ## Frequently Asked Questions
 
-**Q: What problem do fragments solve?**
-Repetition. Instead of copy-pasting the same field list into many queries (and letting them drift), you define it once as a fragment and spread it. One place to change, consistent everywhere.
+**Q: What do fragments solve?**
+Repetition and drift. Define the field list once, spread it, change in one place.
 
 **Q: How do I define and use one?**
-Define `fragment Name on Type { fields }`, then use `...Name` wherever a `Type` is selected. Send the definition together with the operation in the request.
+`fragment Name on Type { fields }`, then `...Name` where a `Type` is selected. Send the definition with the operation.
 
-**Q: What's the difference between a named fragment and an inline fragment?**
-A **named** fragment (`fragment X on T`) is for reuse across operations. An **inline** fragment (`... on T { … }`) selects fields conditionally when a field can return multiple types (polymorphism), like `node(id:)`.
+**Q: Named vs inline fragment?**
+Named (`fragment X on T`) is for reuse; inline (`... on T { … }`) selects conditionally on polymorphic fields like `node(id:)`.
 
-**Q: Do fragments reduce the data fetched or the cost?**
-No — they reduce duplication in *your* query text. The spread expands to the same fields, which still count toward the response and the query cost.
+**Q: Do fragments reduce data or cost?**
+No — only source duplication. The spread expands to the same fields.
 
-**Q: Can I spread a fragment inside an inline fragment?**
-Yes — e.g. `... on ProductVariant { ...VariantFields }`. They compose.
+**Q: Spread a fragment inside an inline fragment?**
+Yes — `... on ProductVariant { ...VariantFields }`. They compose.
 
 ---
 
 ## Interview Questions
 
-1. What is a fragment, and what problem does it solve?
-2. How do you define a fragment and spread it into a query?
-3. Why is a fragment tied to a specific type?
-4. Distinguish named fragments from inline fragments and give a use case for each.
+1. What is a fragment, and what does it solve?
+2. How do you define and spread one?
+3. Why is a fragment tied to a type?
+4. Named vs inline fragments — a use case for each.
 5. Is a fragment stored server-side? How does it reach Shopify?
 6. Do fragments reduce query cost? Explain.
 
@@ -170,17 +154,15 @@ Yes — e.g. `... on ProductVariant { ...VariantFields }`. They compose.
 
 ## Summary
 
-- A **fragment** is a named, reusable set of fields defined **`on` a type**; you **spread** it with `...Name` to avoid repeating field lists and to keep them **consistent** (change once, update everywhere).
-- Fragments are **typed** (spread only where the type matches) and travel **with the operation** in the request — not stored server-side.
-- **Inline fragments** (`... on Type`) are the same idea for **polymorphic** selection (as in `node(id:)`), and the two compose.
-- Fragments reduce **source duplication**, not fields fetched — so they don't lower **query cost**; keep them lean.
+- A **fragment** is a named, reusable field set defined **`on` a type**; **spread** it with `...Name` to avoid repetition and keep field lists **consistent**.
+- Fragments are **typed** and travel **with the operation** — not server-stored.
+- **Inline fragments** (`... on Type`) apply the same idea to **polymorphic** selection; the two compose.
+- Fragments cut **source duplication**, not fields fetched — so not **query cost**. Keep them lean.
 
 ---
 
 ## What's Next
 
-**That completes Section 05 — GraphQL.** You can now read with queries, change with mutations, pass values via variables, address objects with global IDs, page through connections, handle `userErrors`, and stay DRY with fragments. Every REST operation from Section 03 has a GraphQL twin — and the draft-order pipeline (`draftOrderCreate` → `draftOrderInvoiceSend` → `draftOrderComplete`) is fully expressible in both.
+**That completes Section 05 — GraphQL.** You can read with queries, change with mutations, pass variables, use global IDs, page through connections, handle `userErrors`, and stay DRY with fragments. Every REST operation has a GraphQL twin, and the pipeline (`draftOrderCreate` → `draftOrderInvoiceSend` → `draftOrderComplete`) works in both.
 
-You've now covered Shopify's foundations, data model, both API surfaces, and webhooks. The remaining sections build outward toward production:
-
-→ **Next: [Section 06 — App Architecture](../06-app-architecture/)**, then payments, checkout, authentication/OAuth, and production hardening. See the [course roadmap](../README.md) for the full path ahead.
+→ **Next: [Section 06 — App Architecture](../06-app-architecture/)**, then payments, checkout, auth/OAuth, and production. See the [course roadmap](../README.md).
