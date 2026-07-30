@@ -54,7 +54,7 @@ async function loadShop() {
   const info = $("#shop-info");
   try {
     const shop = await api("/api/shop");
-    info.textContent = `${shop.name} · ${shop.domain} · ${shop.currency}`;
+    info.textContent = `${shop.name} · ${shop.domain} · ${shop.currency} · API ${shop.apiVersion}`;
     info.className = "shop-info ok";
   } catch (err) {
     info.textContent = "Not connected — check .env";

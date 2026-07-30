@@ -25,8 +25,7 @@ const app = express();
 const seenWebhooks = new Set(); // demo idempotency store (use a DB in production)
 const recentWebhooks = []; // in-memory log of recent webhooks, surfaced in the UI
 
-app.post(
-  "/webhooks/orders",
+app.post("/webhooks/orders",
   express.raw({ type: "application/json" }),
   (req, res) => {
     const hmac = req.get("X-Shopify-Hmac-Sha256");
@@ -39,6 +38,7 @@ app.post(
     const order = JSON.parse(req.body.toString("utf8")); // safe only after verify
 
     const key = `${topic}:${order.id}`;
+    console.log("webhook received, key (topic : order-id) -> ", key);
     if (seenWebhooks.has(key)) {
       console.log(`[webhook] duplicate ${key} — skipping`);
       return res.sendStatus(200);
@@ -52,7 +52,7 @@ app.post(
       financialStatus: order.financial_status,
       at: new Date().toISOString(),
     });
-    recentWebhooks.length = Math.min(recentWebhooks.length, 20); // keep last 20
+    recentWebhooks.length = Math.min(recentWebhooks.length, 40); // keep last 40
 
     console.log(`[webhook] ${key} verified — ${order.name} (${order.financial_status})`);
     res.sendStatus(200); // acknowledge fast
@@ -86,7 +86,12 @@ app.get(
   "/api/shop",
   handle(async () => {
     const { shop } = await rest("shop.json");
-    return { name: shop.name, domain: shop.myshopify_domain, currency: shop.currency };
+    return {
+      name: shop.name,
+      domain: shop.myshopify_domain,
+      currency: shop.currency,
+      apiVersion: config.apiVersion, // the pinned Admin API version
+    };
   })
 );
 
